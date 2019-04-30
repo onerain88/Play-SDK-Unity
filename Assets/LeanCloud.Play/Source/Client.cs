@@ -812,17 +812,19 @@ namespace LeanCloud.Play {
         }
 
         void HandleSendEvent(Message msg) { 
-            if (msg.TryGetValue("eventId", out object eventIdObj) &&
-                msg.TryGetValue("senderId", out object senderIdObj) &&
-                int.TryParse(senderIdObj.ToString(), out int senderId)) {
+            if (msg.TryGetValue("eventId", out object eventIdObj)) {
                 var eventId = eventIdObj.ToString();
+                var senderId = -1;
+                if (msg.TryGetValue("fromActorId", out object senderIdObj)) {
+                    int.TryParse(senderIdObj.ToString(), out senderId);
+                }
                 Dictionary<string, object> eventData = null;
                 if (msg.TryGetValue("msg", out object eventDataObj)) {
                     eventData = eventDataObj as Dictionary<string, object>;
                 }
                 OnCustomEvent?.Invoke(eventId, eventData, senderId);
             } else {
-                Logger.Error("Handle customn event error: {0}", msg.ToJson());
+                Logger.Error("Handle custom event error: {0}", msg.ToJson());
             }
         }
 
