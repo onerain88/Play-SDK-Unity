@@ -555,8 +555,12 @@ namespace LeanCloud.Play {
             }
         }
 
-        public void Close() { 
-            
+        public void Close() {
+            if (state == PlayState.LOBBY) {
+                lobbyConn.Close();
+            } else if (state == PlayState.GAME) {
+                gameConn.Close();
+            }
         }
 
         void OnLobbyConnMessage(Message msg) {
