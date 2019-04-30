@@ -59,10 +59,13 @@ namespace LeanCloud.Play {
             });
         }
 
-        internal Task<LobbyRoomResult> JoinRoom(string roomName) {
+        internal Task<LobbyRoomResult> JoinRoom(string roomName, List<string> expectedUserIds) {
             var msg = Message.NewRequest("conv", "add");
             msg["cid"] = roomName;
-            // TODO 其他参数
+            if (expectedUserIds != null) {
+                List<object> expecteds = expectedUserIds.Cast<object>().ToList();
+                msg["expectMembers"] = expecteds;
+            }
 
             return Send(msg).OnSuccess(t => {
                 var res = t.Result;

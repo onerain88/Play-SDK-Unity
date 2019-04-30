@@ -173,5 +173,17 @@ namespace LeanCloud.Play.Test
             Assert.AreEqual(lobbyRoom.RoomName, roomName);
             await c1.JoinRoom(lobbyRoom.RoomName);
         }
+
+        [Test]
+        public async void TestMatch() {
+            var roomName = "jr9_r";
+            var c0 = Utils.NewClient("jr9_0");
+            var c1 = Utils.NewClient("jr9_1");
+
+            await c0.Connect();
+            await c0.CreateRoom(roomName, expectedUserIds: new List<string> { "jr9_1" });
+            await c1.Connect();
+            await c1.JoinRoom(roomName, new List<string> { "jr9_0" });
+        }
     }
 }

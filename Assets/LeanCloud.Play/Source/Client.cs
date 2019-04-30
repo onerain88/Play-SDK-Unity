@@ -173,7 +173,7 @@ namespace LeanCloud.Play {
             return tcs.Task;
         }
 
-        public Task<Room> JoinRoom(string roomName) {
+        public Task<Room> JoinRoom(string roomName, List<string> expectedUserIds = null) {
             var tcs = new TaskCompletionSource<Room>();
             context.Post(_ => {
                 // 判断状态
@@ -185,7 +185,7 @@ namespace LeanCloud.Play {
                 state = PlayState.LOBBY_TO_GAME;
                 string roomId = null;
                 GameConnection gc = null;
-                lobbyConn.JoinRoom(roomName).ContinueWith(t => {
+                lobbyConn.JoinRoom(roomName, expectedUserIds).ContinueWith(t => {
                     if (t.IsFaulted) {
                         throw t.Exception.InnerException;
                     }
@@ -197,7 +197,7 @@ namespace LeanCloud.Play {
                         throw t.Exception.InnerException;
                     }
                     gc = t.Result;
-                    return gc.JoinRoom(roomId);
+                    return gc.JoinRoom(roomId, expectedUserIds);
                 }).Unwrap().ContinueWith(t => {
                     context.Post(__ => { 
                         if (t.IsFaulted) {
@@ -236,7 +236,7 @@ namespace LeanCloud.Play {
                         throw t.Exception.InnerException;
                     }
                     gc = t.Result;
-                    return gc.JoinRoom(roomId);
+                    return gc.JoinRoom(roomId, null);
                 }).Unwrap().ContinueWith(t => {
                     context.Post(__ => { 
                         if (t.IsFaulted) {
@@ -280,7 +280,7 @@ namespace LeanCloud.Play {
                     if (create) {
                         return gc.CreateRoom(roomId, roomOptions, expectedUserIds);
                     }
-                    return gc.JoinRoom(roomId);
+                    return gc.JoinRoom(roomId, expectedUserIds);
                 }).Unwrap().ContinueWith(t => {
                     context.Post(__ => { 
                         if (t.IsFaulted) {
@@ -319,7 +319,7 @@ namespace LeanCloud.Play {
                         throw t.Exception.InnerException;
                     }
                     gc = t.Result;
-                    return gc.JoinRoom(roomId);
+                    return gc.JoinRoom(roomId, expectedUserIds);
                 }).Unwrap().ContinueWith(t => {
                     context.Post(__ => {
                         if (t.IsFaulted) {
