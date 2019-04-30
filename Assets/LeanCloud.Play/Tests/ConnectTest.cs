@@ -20,10 +20,6 @@ namespace LeanCloud.Play.Test
 
         [UnityTest]
         public IEnumerator ConnectWithSameId() {
-            Logger.LogDelegate += (level, info) => {
-                Debug.Log(info);
-            };
-
             var flag = false;
             var c0 = Utils.NewClient("ct1");
             var c1 = Utils.NewClient("ct1");
@@ -42,17 +38,96 @@ namespace LeanCloud.Play.Test
             while (!flag) {
                 yield return null;
             }
+            c0.Close();
+            c1.Close();
+        }
+
+        [Test]
+        public async void CloseFromLobby() {
+            var c = Utils.NewClient("ct2");
+            await c.Connect();
+            c.Close();
+            c = Utils.NewClient("ct2");
+            await c.Connect();
+            c.Close();
+        }
+
+        [Test]
+        public async void CloseFromGame() {
+            var c = Utils.NewClient("ct3");
+            await c.Connect();
+            await c.CreateRoom();
+            c.Close();
+            c = Utils.NewClient("ct3");
+            await c.Connect();
+            await c.CreateRoom();
+            c.Close();
         }
 
         [Test]
         public async void ConnectFailed() {
-            var c = Utils.NewClient("ct2 ");
+            var c = Utils.NewClient("ct4 ");
             try {
                 await c.Connect();
             } catch (PlayException e) {
                 Assert.AreEqual(e.Code, 4104);
                 Debug.Log(e.Message);
+                c.Close();
             }
+        }
+
+        [UnityTest, Timeout(40000)]
+        public IEnumerator KeepAlive() {
+            Logger.LogDelegate += Utils.Log;
+
+            var f = false;
+            var roomName = "ct5_r";
+            var c = Utils.NewClient("ct5");
+
+            c.Connect().OnSuccess(_ => {
+                return c.CreateRoom(roomName);
+            }).Unwrap().OnSuccess(_ => {
+                Task.Delay(30000).OnSuccess(__ => {
+                    Debug.Log("delay 30s done");
+                    f = true;
+                });
+            });
+
+            while (!f) {
+                yield return null;
+            }
+            c.Close();
+        }
+
+        [UnityTest, Timeout(40000)]
+        public IEnumerator SendOnly() {
+            Logger.LogDelegate += Utils.Log;
+
+            var f = false;
+            var c = Utils.NewClient("ct6");
+            c.Connect().OnSuccess(_ => {
+                return c.CreateRoom();
+            }).Unwrap().OnSuccess(_ => {
+                Task.Run(() => {
+                    var count = 6;
+                    while (count > 0 && !f) {
+                        var options = new SendEventOptions { 
+                            ReceiverGroup = ReceiverGroup.Others
+                        };
+                        c.SendEvent("hi", null, options);
+                        Thread.Sleep(5000);
+                    }
+                });
+                Task.Delay(30000).OnSuccess(__ => {
+                    Debug.Log("delay 30s done");
+                    f = true;
+                });
+            });
+
+            while (!f) {
+                yield return null;
+            }
+            c.Close();
         }
     }
 }

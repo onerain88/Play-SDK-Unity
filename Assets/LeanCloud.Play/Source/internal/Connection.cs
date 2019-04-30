@@ -92,7 +92,6 @@ namespace LeanCloud.Play {
         void Send(string msg) {
             Logger.Debug("=> {0} at {1}", msg, Thread.CurrentThread.ManagedThreadId);
             ws.Send(msg);
-            Ping();
         }
 
         internal void Close() {
@@ -106,6 +105,7 @@ namespace LeanCloud.Play {
         // Websocket 事件
         void OnWebSocketMessage(object sender, MessageEventArgs eventArgs) {
             Logger.Debug("<= {0} at {1}", eventArgs.Data, Thread.CurrentThread.ManagedThreadId);
+            Ping();
             Pong();
             if (PING.Equals(eventArgs.Data)) {
                 return;
@@ -183,7 +183,6 @@ namespace LeanCloud.Play {
                 if (pongTokenSource != null) {
                     pongTokenSource.Cancel();
                 }
-                pongTokenSource = new CancellationTokenSource();
                 Task.Delay(TimeSpan.FromSeconds(GetPingDuration() * 2)).ContinueWith(t => {
                     Logger.Debug("It's time for closing ws.");
                     lock (ws) {

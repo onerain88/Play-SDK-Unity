@@ -293,8 +293,7 @@ namespace LeanCloud.Play {
         /// 离开大厅
         /// </summary>
         public void LeaveLobby() {
-            if (this.PlayState != PlayState.LOBBY)
-            {
+            if (this.PlayState != PlayState.LOBBY) {
                 throw new Exception(string.Format("error play state: {0}", this.PlayState));
             }
             Dictionary<string, object> msg = new Dictionary<string, object>() { 

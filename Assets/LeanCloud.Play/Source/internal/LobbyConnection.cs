@@ -28,6 +28,11 @@ namespace LeanCloud.Play {
             return tcs.Task;
         }
 
+        internal Task JoinLobby() {
+            var msg = Message.NewRequest("lobby", "add");
+            return Send(msg);
+        }
+
         internal Task<LobbyRoomResult> CreateRoom(string roomName, RoomOptions roomOptions, List<string> expectedUserIds) {
             var tcs = new TaskCompletionSource<LobbyRoomResult>();
             var msg = Message.NewRequest("conv", "start");

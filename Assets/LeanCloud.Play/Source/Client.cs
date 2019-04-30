@@ -112,6 +112,25 @@ namespace LeanCloud.Play {
             return tcs.Task;
         }
 
+        public Task JoinLobby() {
+            var tcs = new TaskCompletionSource<bool>();
+            context.Post(_ => {
+                if (state != PlayState.LOBBY) {
+                    tcs.SetException(new PlayException(PlayExceptionCode.StateError,
+                        string.Format("You cannot call JoinLobby() on {0} state", state.ToString())));
+                    return;
+                }
+                lobbyConn.JoinLobby().ContinueWith(t => {
+                    if (t.IsFaulted) {
+                        tcs.SetException(t.Exception.InnerException);
+                    } else {
+                        tcs.SetResult(true);
+                    }
+                });
+            }, null);
+            return tcs.Task;
+        }
+
         public Task<Room> CreateRoom(string roomName = null, RoomOptions roomOptions = null, List<string> expectedUserIds = null) {
             var tcs = new TaskCompletionSource<Room>();
             context.Post(_ => {
