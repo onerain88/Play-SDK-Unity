@@ -5,6 +5,7 @@ using System.Collections.Generic;
 
 namespace LeanCloud.Play {
     public class Client {
+        // 事件
         public event Action<List<LobbyRoom>> OnLobbyRoomListUpdated;
         public event Action<Player> OnPlayerRoomJoined;
         public event Action<Player> OnPlayerRoomLeft;
@@ -67,8 +68,7 @@ namespace LeanCloud.Play {
 
             state = PlayState.INIT;
             Logger.Debug("start at {0}", Thread.CurrentThread.ManagedThreadId);
-            //context = new PlaySynchronizationContext();
-            context = SynchronizationContext.Current;
+            context = SynchronizationContext.Current ?? new PlaySynchronizationContext();
 
             playRouter = new PlayRouter(appId, playServer);
             lobbyRouter = new LobbyRouter(appId, false, null);
@@ -82,8 +82,8 @@ namespace LeanCloud.Play {
                 Logger.Debug("connecting at {0}", Thread.CurrentThread.ManagedThreadId);
                 // 判断状态
                 if (state == PlayState.CONNECTING) {
-                    // TODO 应该返回正在连接的 Task 对象
-
+                    // 
+                    Logger.Debug("it is connecting...");
                     return;
                 }
                 if (state != PlayState.INIT) {

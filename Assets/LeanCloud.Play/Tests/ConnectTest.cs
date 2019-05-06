@@ -131,5 +131,24 @@ namespace LeanCloud.Play.Test
             }
             c.Close();
         }
+
+        [UnityTest]
+        public IEnumerator ConnectRepeatedly() {
+            Logger.LogDelegate += Utils.Log;
+
+            var f = false;
+            var c = Utils.NewClient("ct7");
+
+            c.Connect().OnSuccess(_ => {
+                c.Close();
+                f = true;
+            });
+            c.Connect();
+
+            while (!f) {
+                yield return null;
+            }
+            c.Close();
+        }
     }
 }
