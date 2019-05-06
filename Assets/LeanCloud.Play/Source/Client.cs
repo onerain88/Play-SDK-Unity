@@ -869,11 +869,15 @@ namespace LeanCloud.Play {
         }
 
         Task<LobbyConnection> ConnectLobby() {
-            var routerUrl = playRouter.Fetch();
-            Logger.Debug("http server: {0} at {1}", routerUrl, Thread.CurrentThread.ManagedThreadId);
-            var lobbyUrl = lobbyRouter.Fetch(routerUrl);
-            Logger.Debug("wss server: {0} at {1}", lobbyUrl, Thread.CurrentThread.ManagedThreadId);
-            return LobbyConnection.Connect(AppId, lobbyUrl, UserId, GameVersion);
+            return playRouter.Fetch().OnSuccess(t => {
+                var serverUrl = t.Result;
+                Logger.Debug("play server: {0} at {1}", serverUrl, Thread.CurrentThread.ManagedThreadId);
+                return lobbyRouter.Fetch(serverUrl);
+            }).Unwrap().OnSuccess(t => {
+                var lobbyUrl = t.Result;
+                Logger.Debug("wss server: {0} at {1}", lobbyUrl, Thread.CurrentThread.ManagedThreadId);
+                return LobbyConnection.Connect(AppId, lobbyUrl, UserId, GameVersion);
+            }).Unwrap();
         }
 
         void LobbyToGame(GameConnection gc, Room room) {
