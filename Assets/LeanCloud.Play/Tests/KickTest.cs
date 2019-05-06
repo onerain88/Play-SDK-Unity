@@ -11,9 +11,7 @@ namespace LeanCloud.Play.Test
     {
         [UnityTest]
         public IEnumerator Kick() {
-            Logger.LogDelegate += (level, info) => {
-                Debug.Log(info);
-            };
+            Logger.LogDelegate += Utils.Log;
 
             var flag = false;
             var roomName = "kt0_r";
@@ -40,13 +38,13 @@ namespace LeanCloud.Play.Test
             while (!flag) {
                 yield return null;
             }
+            c0.Close();
+            c1.Close();
         }
 
         [UnityTest]
         public IEnumerator KickWithMsg() {
-            Logger.LogDelegate += (level, info) => {
-                Debug.Log(info);
-            };
+            Logger.LogDelegate += Utils.Log;
 
             var flag = false;
             var roomName = "kt1_r";
@@ -73,6 +71,8 @@ namespace LeanCloud.Play.Test
             while (!flag) {
                 yield return null;
             }
+            c0.Close();
+            c1.Close();
         }
     }
 }

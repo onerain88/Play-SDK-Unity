@@ -4,13 +4,16 @@ using System.Net;
 using System.Collections.Generic;
 
 namespace LeanCloud.Play {
-    internal class AppRouter {
-        string appId;
-        string url;
+    internal class PlayRouter {
+        readonly string appId;
+        readonly string playServer;
+
+        readonly string url;
         long serverValidTimestamp;
 
-        internal AppRouter(string appId) {
+        internal PlayRouter(string appId, string playServer) {
             this.appId = appId;
+            this.playServer = playServer;
             url = null;
             serverValidTimestamp = 0;
         }

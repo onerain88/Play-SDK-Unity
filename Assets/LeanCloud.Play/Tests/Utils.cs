@@ -12,13 +12,13 @@ namespace LeanCloud.Play.Test {
         internal static void Log(LogLevel level, string info) { 
             switch (level) {
                 case LogLevel.Debug:
-                    Debug.Log(info);
+                    Debug.LogFormat("[DEBUG] {0}", info);
                     break;
                 case LogLevel.Warn:
-                    Debug.LogWarning(info);
+                    Debug.LogFormat("[WARNING] {0}", info);
                     break;
                 case LogLevel.Error:
-                    Debug.LogError(info);
+                    Debug.LogFormat("[ERROR] {0}", info);
                     break;
                 default:
                     Debug.Log(info);

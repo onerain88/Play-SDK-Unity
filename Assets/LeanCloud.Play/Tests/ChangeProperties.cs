@@ -47,13 +47,13 @@ namespace LeanCloud.Play.Test
             while (!f0 || !f1) {
                 yield return null;
             }
+            c0.Close();
+            c1.Close();
         }
 
         [Test]
         public async void ChangeRoomPropertiesWithCAS() {
-            Logger.LogDelegate += (level, info) => {
-                Debug.Log(info);
-            };
+            Logger.LogDelegate += Utils.Log;
 
             Debug.Log("hello");
             var roomName = "cp1_r";
@@ -134,9 +134,7 @@ namespace LeanCloud.Play.Test
 
         [Test]
         public async void ChangePlayerPropertiesWithCAS() {
-            Logger.LogDelegate += (level, info) => {
-                Debug.Log(info);
-            };
+            Logger.LogDelegate += Utils.Log;
 
             var roomName = "cp3_r";
             var c = Utils.NewClient("cp3");
@@ -185,9 +183,7 @@ namespace LeanCloud.Play.Test
 
         [Test]
         public async void ChangePropertiesWithSameValue() {
-            Logger.LogDelegate += (level, info) => {
-                Debug.Log(info);
-            };
+            Logger.LogDelegate += Utils.Log;
 
             var roomName = "cp5_r";
             var c = Utils.NewClient("cp5");

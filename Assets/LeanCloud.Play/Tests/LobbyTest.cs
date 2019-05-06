@@ -12,9 +12,7 @@ namespace LeanCloud.Play.Test
         [UnityTest, Timeout(100000)]
         public IEnumerator RoomListUpdate()
         {
-            Logger.LogDelegate += (level, info) => {
-                Debug.Log(info);
-            };
+            Logger.LogDelegate += Utils.Log;
 
             var f = false;
             var c0 = Utils.NewClient("lt0_0");

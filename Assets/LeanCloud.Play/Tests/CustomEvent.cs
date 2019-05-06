@@ -11,9 +11,7 @@ namespace LeanCloud.Play.Test
     {
         [UnityTest]
         public IEnumerator CustomEventWithReceiverGroup() {
-            Logger.LogDelegate += (level, info) => {
-                Debug.Log(info);
-            };
+            Logger.LogDelegate += Utils.Log;
 
             var f = false;
             var roomName = "ce0_r";
@@ -48,16 +46,13 @@ namespace LeanCloud.Play.Test
             while (!f) {
                 yield return null;
             }
-
             c0.Close();
             c1.Close();
         }
 
         [UnityTest]
         public IEnumerator CustomEventWithTargetIds() {
-            Logger.LogDelegate += (level, info) => {
-                Debug.Log(info);
-            };
+            Logger.LogDelegate += Utils.Log;
 
             var f = false;
             var roomName = "ce1_r";
@@ -92,7 +87,6 @@ namespace LeanCloud.Play.Test
             while (!f) {
                 yield return null;
             }
-
             c0.Close();
             c1.Close();
         }
@@ -100,9 +94,7 @@ namespace LeanCloud.Play.Test
 
         [UnityTest]
         public IEnumerator SimpleEvent() {
-            Logger.LogDelegate += (level, info) => {
-                Debug.Log(info);
-            };
+            Logger.LogDelegate += Utils.Log;
 
             var f0 = false;
             var f1 = false;

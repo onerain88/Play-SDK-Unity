@@ -20,6 +20,8 @@ namespace LeanCloud.Play.Test
 
         [UnityTest]
         public IEnumerator ConnectWithSameId() {
+            Logger.LogDelegate += Utils.Log;
+
             var flag = false;
             var c0 = Utils.NewClient("ct1");
             var c1 = Utils.NewClient("ct1");

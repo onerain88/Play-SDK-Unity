@@ -42,6 +42,8 @@ namespace LeanCloud.Play.Test
             while (!f0 || !f1) {
                 yield return null;
             }
+            c0.Close();
+            c1.Close();
         }
 
         [UnityTest]
@@ -71,13 +73,13 @@ namespace LeanCloud.Play.Test
             while (!f) {
                 yield return null;
             }
+            c0.Close();
+            c1.Close();
         }
 
         [UnityTest]
         public IEnumerator FixMaster() {
-            Logger.LogDelegate += (level, info) => {
-                Debug.Log(info);
-            };
+            Logger.LogDelegate += Utils.Log;
 
             var f0 = false;
             var f1 = false;
@@ -112,6 +114,8 @@ namespace LeanCloud.Play.Test
             while (!f0 || !f1) {
                 yield return null;
             }
+            c0.Close();
+            c1.Close();
         }
     }
 }

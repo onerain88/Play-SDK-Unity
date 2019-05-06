@@ -41,7 +41,7 @@ namespace LeanCloud.Play {
             get; private set;
         }
 
-        AppRouter appRouter;
+        PlayRouter playRouter;
         LobbyRouter lobbyRouter;
         LobbyConnection lobbyConn;
         GameConnection gameConn;
@@ -58,7 +58,7 @@ namespace LeanCloud.Play {
             get; internal set;
         }
 
-        public Client(string appId, string appKey, string userId, bool ssl = true, string gameVersion = "0.0.1") {
+        public Client(string appId, string appKey, string userId, bool ssl = true, string gameVersion = "0.0.1", string playServer = null) {
             AppId = appId;
             AppKey = appKey;
             UserId = userId;
@@ -70,7 +70,7 @@ namespace LeanCloud.Play {
             //context = new PlaySynchronizationContext();
             context = SynchronizationContext.Current;
 
-            appRouter = new AppRouter(appId);
+            playRouter = new PlayRouter(appId, playServer);
             lobbyRouter = new LobbyRouter(appId, false, null);
             lobbyConn = new LobbyConnection();
             gameConn = new GameConnection();
@@ -869,7 +869,7 @@ namespace LeanCloud.Play {
         }
 
         Task<LobbyConnection> ConnectLobby() {
-            var routerUrl = appRouter.Fetch();
+            var routerUrl = playRouter.Fetch();
             Logger.Debug("http server: {0} at {1}", routerUrl, Thread.CurrentThread.ManagedThreadId);
             var lobbyUrl = lobbyRouter.Fetch(routerUrl);
             Logger.Debug("wss server: {0} at {1}", lobbyUrl, Thread.CurrentThread.ManagedThreadId);

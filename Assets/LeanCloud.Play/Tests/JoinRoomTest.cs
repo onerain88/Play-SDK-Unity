@@ -19,6 +19,8 @@ namespace LeanCloud.Play.Test
             await c1.Connect();
             var room = await c1.JoinRoom(roomName);
             Assert.AreEqual(room.Name, roomName);
+            c0.Close();
+            c1.Close();
         }
 
         [Test]
@@ -31,6 +33,8 @@ namespace LeanCloud.Play.Test
             await c1.Connect();
             var room = await c1.JoinRandomRoom();
             Debug.Log($"join random: {room.Name}");
+            c0.Close();
+            c1.Close();
         }
 
         [Test]
@@ -56,6 +60,9 @@ namespace LeanCloud.Play.Test
             await c2.Connect();
             var room = await c2.JoinRoom(roomName);
             Assert.AreEqual(room.Name, roomName);
+            c0.Close();
+            c1.Close();
+            c2.Close();
         }
 
         [UnityTest]
@@ -87,6 +94,8 @@ namespace LeanCloud.Play.Test
             while (!flag) {
                 yield return null;
             }
+            c0.Close();
+            c1.Close();
         }
 
         [UnityTest]
@@ -103,6 +112,8 @@ namespace LeanCloud.Play.Test
             });
 
             yield return null;
+            // TODO
+
         }
 
         [Test]
@@ -116,6 +127,8 @@ namespace LeanCloud.Play.Test
             } catch (PlayException e) {
                 Assert.AreEqual(e.Code, 4301);
                 Debug.Log(e.Detail);
+            } finally {
+                c.Close();
             }
         }
 
@@ -148,6 +161,9 @@ namespace LeanCloud.Play.Test
             } catch (PlayException e) {
                 Assert.AreEqual(e.Code, 4301);
                 Debug.Log(e.Detail);
+            } finally {
+                c0.Close();
+                c1.Close();
             }
         }
 
@@ -172,18 +188,37 @@ namespace LeanCloud.Play.Test
             });
             Assert.AreEqual(lobbyRoom.RoomName, roomName);
             await c1.JoinRoom(lobbyRoom.RoomName);
+
+            c0.Close();
+            c1.Close();
         }
 
         [Test]
-        public async void TestMatch() {
-            var roomName = "jr9_r";
+        public async void JoinWithExpectedUserIdsFixBug() {
+            Logger.LogDelegate += Utils.Log;
+
+            var roomName = "jr9_r0";
             var c0 = Utils.NewClient("jr9_0");
             var c1 = Utils.NewClient("jr9_1");
+            var c2 = Utils.NewClient("jr9_2");
+            var c3 = Utils.NewClient("jr9_3");
 
             await c0.Connect();
-            await c0.CreateRoom(roomName, expectedUserIds: new List<string> { "jr9_1" });
+            var roomOptions = new RoomOptions { 
+                MaxPlayerCount = 4
+            };
+            await c0.CreateRoom(roomName, roomOptions, new List<string> { "jr9_1" });
             await c1.Connect();
-            await c1.JoinRoom(roomName, new List<string> { "jr9_0" });
+            await c1.JoinRoom(roomName);
+            await c2.Connect();
+            await c2.JoinRoom(roomName);
+            await c3.Connect();
+            await c3.JoinRoom(roomName);
+
+            c0.Close();
+            c1.Close();
+            c2.Close();
+            c3.Close();
         }
     }
 }

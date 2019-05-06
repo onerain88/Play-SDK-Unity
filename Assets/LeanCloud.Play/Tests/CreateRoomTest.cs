@@ -15,6 +15,7 @@ namespace LeanCloud.Play.Test
             await c.Connect();
             var room = await c.CreateRoom();
             Debug.Log(room.Name);
+            c.Close();
         }
 
         [Test]
@@ -24,6 +25,7 @@ namespace LeanCloud.Play.Test
             await c.Connect();
             var room = await c.CreateRoom(roomName);
             Assert.AreEqual(room.Name, roomName);
+            c.Close();
         }
 
         [Test]
@@ -50,6 +52,7 @@ namespace LeanCloud.Play.Test
             var props = room.CustomProperties;
             Assert.AreEqual(props["title"].ToString(), roomTitle);
             Assert.AreEqual(int.Parse(props["level"].ToString()), 2);
+            c.Close();
         }
 
         [UnityTest]
@@ -77,6 +80,8 @@ namespace LeanCloud.Play.Test
             while (!flag) {
                 yield return null;
             }
+            c0.Close();
+            c1.Close();
         }
 
         [UnityTest]
@@ -103,6 +108,7 @@ namespace LeanCloud.Play.Test
             while (!flag) {
                 yield return null;
             }
+            c.Close();
         }
     }
 }
