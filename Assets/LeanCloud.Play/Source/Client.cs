@@ -77,38 +77,33 @@ namespace LeanCloud.Play {
         }
 
         public Task<Client> Connect() {
+            if (state == PlayState.CONNECTING) {
+                // 
+                Logger.Debug("it is connecting...");
+                return null;
+            }
+            if (state != PlayState.INIT && state != PlayState.DISCONNECT) {
+                return Task.FromException<Client>(new PlayException(PlayExceptionCode.StateError,
+                    string.Format("You cannot call Connect() on {0} state", state.ToString())));
+            }
             var tcs = new TaskCompletionSource<Client>();
-            context.Post(_ => {
-                Logger.Debug("connecting at {0}", Thread.CurrentThread.ManagedThreadId);
-                // 判断状态
-                if (state == PlayState.CONNECTING) {
-                    // 
-                    Logger.Debug("it is connecting...");
-                    return;
-                }
-                if (state != PlayState.INIT) {
-                    tcs.SetException(new PlayException(PlayExceptionCode.StateError,
-                        string.Format("You cannot call Connect() on {0} state", state.ToString())));
-                    return;
-                }
-                state = PlayState.CONNECTING;
-                // 建立连接
-                ConnectLobby().ContinueWith(t => {
-                    context.Post(__ => {
-                        if (t.IsFaulted) {
-                            state = PlayState.INIT;
-                            tcs.SetException(t.Exception.InnerException);
-                        } else {
-                            state = PlayState.LOBBY;
-                            Logger.Debug("connected at: {0}", Thread.CurrentThread.ManagedThreadId);
-                            lobbyConn = t.Result;
-                            lobbyConn.OnMessage += OnLobbyConnMessage;
-                            lobbyConn.OnClose += OnLobbyConnClose;
-                            tcs.SetResult(this);
-                        }
-                    }, null);
-                });
-            }, null);
+            state = PlayState.CONNECTING;
+            // 建立连接
+            ConnectLobby().ContinueWith(t => {
+                context.Post(_ => {
+                    if (t.IsFaulted) {
+                        state = PlayState.INIT;
+                        tcs.SetException(t.Exception.InnerException);
+                    } else {
+                        state = PlayState.LOBBY;
+                        Logger.Debug("connected at: {0}", Thread.CurrentThread.ManagedThreadId);
+                        lobbyConn = t.Result;
+                        lobbyConn.OnMessage += OnLobbyConnMessage;
+                        lobbyConn.OnClose += OnLobbyConnClose;
+                        tcs.SetResult(this);
+                    }
+                }, null);
+            });
             return tcs.Task;
         }
 
@@ -132,207 +127,203 @@ namespace LeanCloud.Play {
         }
 
         public Task<Room> CreateRoom(string roomName = null, RoomOptions roomOptions = null, List<string> expectedUserIds = null) {
+            if (state != PlayState.LOBBY) {
+                return Task.FromException<Room>(new PlayException(PlayExceptionCode.StateError,
+                    string.Format("You cannot call CreateRoom() on {0} state", state.ToString())));
+            }
             var tcs = new TaskCompletionSource<Room>();
-            context.Post(_ => {
-                // 判断状态
-                if (state != PlayState.LOBBY) {
-                    tcs.SetException(new PlayException(PlayExceptionCode.StateError,
-                        string.Format("You cannot call CreateRoom() on {0} state", state.ToString())));
-                    return;
+            state = PlayState.LOBBY_TO_GAME;
+            string roomId = null;
+            GameConnection gc = null;
+            // 发送创建房间消息
+            lobbyConn.CreateRoom(roomName, roomOptions, expectedUserIds).ContinueWith(t => {
+                if (t.IsFaulted) {
+                    throw t.Exception.InnerException;
                 }
-                state = PlayState.LOBBY_TO_GAME;
-                string roomId = null;
-                GameConnection gc = null;
-                // 发送创建房间消息
-                lobbyConn.CreateRoom(roomName, roomOptions, expectedUserIds).ContinueWith(t => {
+                // 将 GameConnection 中的 Connect 和 Create 合并在一起返回
+                roomId = t.Result.RoomId;
+                var server = t.Result.PrimaryUrl;
+                return GameConnection.Connect(AppId, server, UserId, GameVersion);
+            }).Unwrap().ContinueWith(t => {
+                if (t.IsFaulted) {
+                    throw t.Exception.InnerException;
+                }
+                gc = t.Result;
+                return gc.CreateRoom(roomId, roomOptions, expectedUserIds);
+            }).Unwrap().ContinueWith(t => {
+                context.Post(__ => {
                     if (t.IsFaulted) {
-                        throw t.Exception.InnerException;
+                        state = PlayState.INIT;
+                        tcs.SetException(t.Exception.InnerException);
+                    } else {
+                        LobbyToGame(gc, t.Result);
+                        tcs.SetResult(Room);
                     }
-                    // 将 GameConnection 中的 Connect 和 Create 合并在一起返回
-                    roomId = t.Result.RoomId;
-                    var server = t.Result.PrimaryUrl;
-                    return GameConnection.Connect(AppId, server, UserId, GameVersion);
-                }).Unwrap().ContinueWith(t => {
-                    if (t.IsFaulted) {
-                        throw t.Exception.InnerException;
-                    }
-                    gc = t.Result;
-                    return gc.CreateRoom(roomId, roomOptions, expectedUserIds);
-                }).Unwrap().ContinueWith(t => {
-                    context.Post(__ => {
-                        if (t.IsFaulted) {
-                            state = PlayState.INIT;
-                            tcs.SetException(t.Exception.InnerException);
-                        } else {
-                            LobbyToGame(gc, t.Result);
-                            tcs.SetResult(Room);
-                        }
-                    }, null);
-                });
-            }, null);
+                }, null);
+            });
             return tcs.Task;
         }
 
         public Task<Room> JoinRoom(string roomName, List<string> expectedUserIds = null) {
+            if (state != PlayState.LOBBY) {
+                return Task.FromException<Room>(new PlayException(PlayExceptionCode.StateError,
+                    string.Format("You cannot call JoinRoom() on {0} state", state.ToString())));
+            }
             var tcs = new TaskCompletionSource<Room>();
-            context.Post(_ => {
-                // 判断状态
-                if (state != PlayState.LOBBY) {
-                    tcs.SetException(new PlayException(PlayExceptionCode.StateError, 
-                        string.Format("You cannot call JoinRoom() on {0} state", state.ToString())));
-                    return;
+            state = PlayState.LOBBY_TO_GAME;
+            string roomId = null;
+            GameConnection gc = null;
+            lobbyConn.JoinRoom(roomName, expectedUserIds).ContinueWith(t => {
+                if (t.IsFaulted) {
+                    throw t.Exception.InnerException;
                 }
-                state = PlayState.LOBBY_TO_GAME;
-                string roomId = null;
-                GameConnection gc = null;
-                lobbyConn.JoinRoom(roomName, expectedUserIds).ContinueWith(t => {
+                roomId = t.Result.RoomId;
+                var server = t.Result.PrimaryUrl;
+                return GameConnection.Connect(AppId, server, UserId, GameVersion);
+            }).Unwrap().ContinueWith(t => {
+                if (t.IsFaulted) {
+                    throw t.Exception.InnerException;
+                }
+                gc = t.Result;
+                return gc.JoinRoom(roomId, expectedUserIds);
+            }).Unwrap().ContinueWith(t => {
+                context.Post(_ => {
                     if (t.IsFaulted) {
-                        throw t.Exception.InnerException;
+                        state = PlayState.INIT;
+                        tcs.SetException(t.Exception.InnerException);
+                    } else {
+                        LobbyToGame(gc, t.Result);
+                        tcs.SetResult(Room);
                     }
-                    roomId = t.Result.RoomId;
-                    var server = t.Result.PrimaryUrl;
-                    return GameConnection.Connect(AppId, server, UserId, GameVersion);
-                }).Unwrap().ContinueWith(t => {
-                    if (t.IsFaulted) {
-                        throw t.Exception.InnerException;
-                    }
-                    gc = t.Result;
-                    return gc.JoinRoom(roomId, expectedUserIds);
-                }).Unwrap().ContinueWith(t => {
-                    context.Post(__ => { 
-                        if (t.IsFaulted) {
-                            state = PlayState.INIT;
-                            tcs.SetException(t.Exception.InnerException);
-                        } else {
-                            LobbyToGame(gc, t.Result);
-                            tcs.SetResult(Room);
-                        }
-                    }, null);
-                });
-            }, null);
+                }, null);
+            });
             return tcs.Task;
         }
 
         public Task<Room> RejoinRoom(string roomName) {
+            if (state != PlayState.LOBBY) {
+                return Task.FromException<Room>(new PlayException(PlayExceptionCode.StateError,
+                    string.Format("You cannot call RejoinRoom() on {0} state", state.ToString())));
+            }
             var tcs = new TaskCompletionSource<Room>();
-            context.Post(_ => {
-                if (state != PlayState.LOBBY) {
-                    tcs.SetException(new PlayException(PlayExceptionCode.StateError, 
-                        string.Format("You cannot call RejoinRoom() on {0} state", state.ToString())));
-                    return;
+            state = PlayState.LOBBY_TO_GAME;
+            string roomId = null;
+            GameConnection gc = null;
+            lobbyConn.RejoinRoom(roomName).ContinueWith(t => {
+                if (t.IsFaulted) {
+                    throw t.Exception.InnerException;
                 }
-                state = PlayState.LOBBY_TO_GAME;
-                string roomId = null;
-                GameConnection gc = null;
-                lobbyConn.RejoinRoom(roomName).ContinueWith(t => {
+                roomId = t.Result.RoomId;
+                var server = t.Result.PrimaryUrl;
+                return GameConnection.Connect(AppId, server, UserId, GameVersion);
+            }).Unwrap().ContinueWith(t => {
+                if (t.IsFaulted) {
+                    throw t.Exception.InnerException;
+                }
+                gc = t.Result;
+                return gc.JoinRoom(roomId, null);
+            }).Unwrap().ContinueWith(t => {
+                context.Post(__ => {
                     if (t.IsFaulted) {
-                        throw t.Exception.InnerException;
+                        state = PlayState.INIT;
+                        tcs.SetException(t.Exception.InnerException);
+                    } else {
+                        LobbyToGame(gc, t.Result);
+                        tcs.SetResult(Room);
                     }
-                    roomId = t.Result.RoomId;
-                    var server = t.Result.PrimaryUrl;
-                    return GameConnection.Connect(AppId, server, UserId, GameVersion);
-                }).Unwrap().ContinueWith(t => { 
-                    if (t.IsFaulted) {
-                        throw t.Exception.InnerException;
-                    }
-                    gc = t.Result;
-                    return gc.JoinRoom(roomId, null);
-                }).Unwrap().ContinueWith(t => {
-                    context.Post(__ => { 
-                        if (t.IsFaulted) {
-                            state = PlayState.INIT;
-                            tcs.SetException(t.Exception.InnerException);
-                        } else {
-                            LobbyToGame(gc, t.Result);
-                            tcs.SetResult(Room);
-                        }
-                    }, null);
-                });
-            }, null);
+                }, null);
+            });
             return tcs.Task;
         }
 
         public Task<Room> JoinOrCreateRoom(string roomName, RoomOptions roomOptions = null, List<string> expectedUserIds = null) {
+            if (state != PlayState.LOBBY) {
+                return Task.FromException<Room>(new PlayException(PlayExceptionCode.StateError,
+                    string.Format("You cannot call JoinOrCreateRoom() on {0} state", state.ToString())));
+            }
             var tcs = new TaskCompletionSource<Room>();
-            context.Post(_ => { 
-                if (state != PlayState.LOBBY) {
-                    tcs.SetException(new PlayException(PlayExceptionCode.StateError,
-                        string.Format("You cannot call JoinOrCreateRoom() on {0} state", state.ToString())));
-                    return;
+            state = PlayState.LOBBY_TO_GAME;
+            bool create = false;
+            string roomId = null;
+            GameConnection gc = null;
+            lobbyConn.JoinOrCreateRoom(roomName, roomOptions, expectedUserIds).ContinueWith(t => {
+                if (t.IsFaulted) {
+                    throw t.Exception.InnerException;
                 }
-                state = PlayState.LOBBY_TO_GAME;
-                bool create = false;
-                string roomId = null;
-                GameConnection gc = null;
-                lobbyConn.JoinOrCreateRoom(roomName, roomOptions, expectedUserIds).ContinueWith(t => { 
+                create = t.Result.Create;
+                roomId = t.Result.RoomId;
+                var server = t.Result.PrimaryUrl;
+                return GameConnection.Connect(AppId, server, UserId, GameVersion);
+            }).Unwrap().ContinueWith(t => {
+                if (t.IsFaulted) {
+                    throw t.Exception.InnerException;
+                }
+                gc = t.Result;
+                if (create) {
+                    return gc.CreateRoom(roomId, roomOptions, expectedUserIds);
+                }
+                return gc.JoinRoom(roomId, expectedUserIds);
+            }).Unwrap().ContinueWith(t => {
+                context.Post(_ => {
                     if (t.IsFaulted) {
-                        throw t.Exception.InnerException;
+                        state = PlayState.INIT;
+                        tcs.SetException(t.Exception.InnerException);
+                    } else {
+                        LobbyToGame(gc, t.Result);
+                        tcs.SetResult(Room);
                     }
-                    create = t.Result.Create;
-                    roomId = t.Result.RoomId;
-                    var server = t.Result.PrimaryUrl;
-                    return GameConnection.Connect(AppId, server, UserId, GameVersion);
-                }).Unwrap().ContinueWith(t => { 
-                    if (t.IsFaulted) {
-                        throw t.Exception.InnerException;
-                    }
-                    gc = t.Result;
-                    if (create) {
-                        return gc.CreateRoom(roomId, roomOptions, expectedUserIds);
-                    }
-                    return gc.JoinRoom(roomId, expectedUserIds);
-                }).Unwrap().ContinueWith(t => {
-                    context.Post(__ => { 
-                        if (t.IsFaulted) {
-                            state = PlayState.INIT;
-                            tcs.SetException(t.Exception.InnerException);
-                        } else {
-                            LobbyToGame(gc, t.Result);
-                            tcs.SetResult(Room);
-                        }
-                    }, null);
-                });
-            }, null);
+                }, null);
+            });
             return tcs.Task;
         }
 
         public Task<Room> JoinRandomRoom(Dictionary<string, object> matchProperties = null, List<string> expectedUserIds = null) {
+            if (state != PlayState.LOBBY) {
+                return Task.FromException<Room>(new PlayException(PlayExceptionCode.StateError,
+                    string.Format("You cannot call JoinRandomRoom() on {0} state", state.ToString())));
+            }
             var tcs = new TaskCompletionSource<Room>();
-            context.Post(_ => { 
-                if (state != PlayState.LOBBY) {
-                    tcs.SetException(new PlayException(PlayExceptionCode.StateError, 
-                        string.Format("You cannot call JoinRandomRoom() on {0} state", state.ToString())));
-                    return;
+            state = PlayState.LOBBY_TO_GAME;
+            string roomId = null;
+            GameConnection gc = null;
+            lobbyConn.JoinRandomRoom(matchProperties, expectedUserIds).ContinueWith(t => {
+                if (t.IsFaulted) {
+                    throw t.Exception.InnerException;
                 }
-                state = PlayState.LOBBY_TO_GAME;
-                string roomId = null;
-                GameConnection gc = null;
-                lobbyConn.JoinRandomRoom(matchProperties, expectedUserIds).ContinueWith(t => {
+                roomId = t.Result.RoomId;
+                var server = t.Result.PrimaryUrl;
+                return GameConnection.Connect(AppId, server, UserId, GameVersion);
+            }).Unwrap().ContinueWith(t => {
+                if (t.IsFaulted) {
+                    throw t.Exception.InnerException;
+                }
+                gc = t.Result;
+                return gc.JoinRoom(roomId, expectedUserIds);
+            }).Unwrap().ContinueWith(t => {
+                context.Post(_ => {
                     if (t.IsFaulted) {
-                        throw t.Exception.InnerException;
+                        state = PlayState.INIT;
+                        tcs.SetException(t.Exception.InnerException);
+                    } else {
+                        LobbyToGame(gc, t.Result);
+                        tcs.SetResult(Room);
                     }
-                    roomId = t.Result.RoomId;
-                    var server = t.Result.PrimaryUrl;
-                    return GameConnection.Connect(AppId, server, UserId, GameVersion);
-                }).Unwrap().ContinueWith(t => { 
-                    if (t.IsFaulted) {
-                        throw t.Exception.InnerException;
-                    }
-                    gc = t.Result;
-                    return gc.JoinRoom(roomId, expectedUserIds);
-                }).Unwrap().ContinueWith(t => {
-                    context.Post(__ => {
-                        if (t.IsFaulted) {
-                            state = PlayState.INIT;
-                            tcs.SetException(t.Exception.InnerException);
-                        } else {
-                            LobbyToGame(gc, t.Result);
-                            tcs.SetResult(Room);
-                        }
-                    }, null);
-                });
-            }, null);
+                }, null);
+            });
             return tcs.Task;
+        }
+
+        public Task<Room> ReconnectAndRejoin() {
+            if (state != PlayState.DISCONNECT) {
+                return Task.FromException<Room>(new PlayException(PlayExceptionCode.StateError,
+                    string.Format("You cannot call ReconnectAndRejoin() on {0} state", state.ToString())));
+            }
+            if (Room == null) {
+                return Task.FromException<Room>(new ArgumentNullException(nameof(Room)));
+            }
+            return Connect().OnSuccess(_ => {
+                return RejoinRoom(Room.Name);
+            }).Unwrap();
         }
 
         public Task<LobbyRoom> MatchRandom(Dictionary<string, object> matchProperties = null, List<string> expectedUserIds = null) {
@@ -355,206 +346,181 @@ namespace LeanCloud.Play {
         }
 
         public Task LeaveRoom() {
+            if (state != PlayState.GAME) {
+                return Task.FromException<Room>(new PlayException(PlayExceptionCode.StateError,
+                    string.Format("You cannot call LeaveRoom() on {0} state", state.ToString())));
+            }
             var tcs = new TaskCompletionSource<bool>();
-            context.Post(_ => {
-                //  判断状态
-                if (state != PlayState.GAME) {
-                    tcs.SetException(new PlayException(PlayExceptionCode.StateError, 
-                        string.Format("You cannot call LeaveRoom() on {0} state", state.ToString())));
-                    return;
+            state = PlayState.GAME_TO_LOBBY;
+            gameConn.LeaveRoom().ContinueWith(t => {
+                if (t.IsFaulted) {
+                    state = PlayState.GAME;
+                    tcs.SetException(t.Exception.InnerException);
+                } else {
+                    context.Post(__ => {
+                        gameConn.Close();
+                        // 建立连接
+                        ConnectLobby().ContinueWith(st => {
+                            context.Post(___ => {
+                                if (t.IsFaulted) {
+                                    state = PlayState.INIT;
+                                    throw t.Exception.InnerException;
+                                }
+                                GameToLobby(st.Result);
+                                tcs.SetResult(true);
+                            }, null);
+                        });
+                    }, null);
                 }
-                gameConn.LeaveRoom().ContinueWith(t => { 
-                    if (t.IsFaulted) {
-                        tcs.SetException(t.Exception.InnerException);
-                    } else {
-                        context.Post(__ => {
-                            gameConn.Close();
-                            // 建立连接
-                            ConnectLobby().ContinueWith(st => {
-                                context.Post(___ => {
-                                    if (t.IsFaulted) {
-                                        state = PlayState.INIT;
-                                        throw t.Exception.InnerException;
-                                    }
-                                    GameToLobby(st.Result);
-                                    tcs.SetResult(true);
-                                }, null);
-                            });
-                        }, null);
-                    }
-                });
-            }, null);
+            });
             return tcs.Task;
         }
 
         public Task<bool> SetRoomOpened(bool opened) {
+            if (state != PlayState.GAME) {
+                return Task.FromException<bool>(new PlayException(PlayExceptionCode.StateError,
+                    string.Format("You cannot call SetRoomOpened() on {0} state", state.ToString())));
+            }
             var tcs = new TaskCompletionSource<bool>();
-            context.Post(_ => {
-                // 判断状态
-                if (state != PlayState.GAME) {
-                    tcs.SetException(new PlayException(PlayExceptionCode.StateError, 
-                        string.Format("You cannot call SetRoomOpened() on {0} state", state.ToString())));
-                    return;
+            gameConn.SetRoomOpened(opened).ContinueWith(t => {
+                if (t.IsFaulted) {
+                    tcs.SetException(t.Exception.InnerException);
+                } else {
+                    context.Post(__ => {
+                        Room.Opened = t.Result;
+                        tcs.SetResult(t.Result);
+                    }, null);
                 }
-                gameConn.SetRoomOpened(opened).ContinueWith(t => { 
-                    if (t.IsFaulted) {
-                        tcs.SetException(t.Exception.InnerException);
-                    } else {
-                        context.Post(__ => {
-                            Room.Opened = t.Result;
-                            tcs.SetResult(t.Result);
-                        }, null);
-                    }
-                });
-            }, null);
+            });
             return tcs.Task;
         }
 
         public Task<bool> SetRoomVisible(bool visible) {
+            if (state != PlayState.GAME) {
+                return Task.FromException<bool>(new PlayException(PlayExceptionCode.StateError,
+                    string.Format("You cannot call SetRoomVisible() on {0} state", state.ToString())));
+            }
             var tcs = new TaskCompletionSource<bool>();
-            context.Post(_ => { 
-                // 判断状态
-                if (state != PlayState.GAME) {
-                    tcs.SetException(new PlayException(PlayExceptionCode.StateError, 
-                        string.Format("You cannot call SetRoomVisible() on {0} state", state.ToString())));
-                    return;
+            gameConn.SetRoomVisible(visible).ContinueWith(t => {
+                if (t.IsFaulted) {
+                    tcs.SetException(t.Exception.InnerException);
+                } else {
+                    context.Post(__ => {
+                        Room.Visible = t.Result;
+                        tcs.SetResult(t.Result);
+                    }, null);
                 }
-                gameConn.SetRoomVisible(visible).ContinueWith(t => {
-                    if (t.IsFaulted) {
-                        tcs.SetException(t.Exception.InnerException);
-                    } else {
-                        context.Post(__ => {
-                            Room.Visible = t.Result;
-                            tcs.SetResult(t.Result);
-                        }, null);
-                    }
-                });
-            }, null);
+            });
             return tcs.Task;
         }
 
         public Task<Player> SetMaster(int newMasterId) {
+            if (state != PlayState.GAME) {
+                return Task.FromException<Player>(new PlayException(PlayExceptionCode.StateError,
+                    string.Format("You cannot call SetMaster() on {0} state", state.ToString())));
+            }
             var tcs = new TaskCompletionSource<Player>();
-            context.Post(_ => {
-                if (state != PlayState.GAME) {
-                    tcs.SetException(new PlayException(PlayExceptionCode.StateError,
-                        string.Format("You cannot call SetMaster() on {0} state", state.ToString())));
-                    return;
+            gameConn.SetMaster(newMasterId).ContinueWith(t => {
+                if (t.IsFaulted) {
+                    tcs.SetException(t.Exception.InnerException);
+                } else {
+                    context.Post(__ => {
+                        Room.MasterActorId = t.Result;
+                        tcs.SetResult(Room.Master);
+                    }, null);
                 }
-                gameConn.SetMaster(newMasterId).ContinueWith(t => { 
-                    if (t.IsFaulted) {
-                        tcs.SetException(t.Exception.InnerException);
-                    } else {
-                        context.Post(__ => {
-                            Room.MasterActorId = t.Result;
-                            tcs.SetResult(Room.Master);
-                        }, null);
-                    }
-                });
-            }, null);
+            });
             return tcs.Task;
         }
 
         public Task KickPlayer(int actorId, int code = 0, string reason = null) {
+            if (state != PlayState.GAME) {
+                return Task.FromException(new PlayException(PlayExceptionCode.StateError,
+                    string.Format("You cannot call KickPlayer() on {0} state", state.ToString())));
+            }
             var tcs = new TaskCompletionSource<bool>();
-            context.Post(_ => { 
-                if (state != PlayState.GAME) {
-                    tcs.SetException(new PlayException(PlayExceptionCode.StateError,
-                        string.Format("You cannot call KickPlayer() on {0} state", state.ToString())));
-                    return;
+            gameConn.KickPlayer(actorId, code, reason).ContinueWith(t => {
+                if (t.IsFaulted) {
+                    tcs.SetException(t.Exception.InnerException);
+                } else {
+                    context.Post(__ => {
+                        try {
+                            Room.RemovePlayer(t.Result);
+                        } catch (Exception e) {
+                            Logger.Error(e.Message);
+                        }
+                        tcs.SetResult(true);
+                    }, null);
                 }
-                gameConn.KickPlayer(actorId, code, reason).ContinueWith(t => {
-                    if (t.IsFaulted) {
-                        tcs.SetException(t.Exception.InnerException);
-                    } else {
-                        context.Post(__ => {
-                            try {
-                                Room.RemovePlayer(t.Result);
-                            } catch (Exception e) {
-                                Logger.Error(e.Message);
-                            }
-                            tcs.SetResult(true);
-                        }, null);
-                    }
-                });
-            }, null);
+            });
             return tcs.Task;
         }
 
         public Task SendEvent(string eventId, Dictionary<string, object> eventData = null, SendEventOptions options = null) {
+            if (state != PlayState.GAME) {
+                return Task.FromException(new PlayException(PlayExceptionCode.StateError,
+                    string.Format("You cannot call SendEvent() on {0} state", state.ToString())));
+            }
             var tcs = new TaskCompletionSource<bool>();
-            context.Post(_ => {
-                if (state != PlayState.GAME) {
-                    tcs.SetException(new PlayException(PlayExceptionCode.StateError,
-                        string.Format("You cannot call SendEvent() on {0} state", state.ToString())));
-                    return;
+            var opts = options;
+            if (opts == null) {
+                opts = new SendEventOptions {
+                    ReceiverGroup = ReceiverGroup.All
+                };
+            }
+            gameConn.SendEvent(eventId, eventData, opts).ContinueWith(t => {
+                if (t.IsFaulted) {
+                    tcs.SetException(t.Exception.InnerException);
+                } else {
+                    context.Post(__ => {
+                        tcs.SetResult(true);
+                    }, null);
                 }
-                var opts = options;
-                if (opts == null) {
-                    opts = new SendEventOptions { 
-                        ReceiverGroup = ReceiverGroup.All
-                    };
-                }
-                gameConn.SendEvent(eventId, eventData, opts).ContinueWith(t => {
-                    if (t.IsFaulted) {
-                        tcs.SetException(t.Exception.InnerException);
-                    } else {
-                        context.Post(__ => {
-                            tcs.SetResult(true);
-                        }, null);
-                    }
-                });
-            }, null);
+            });
             return tcs.Task;
         }
 
         public Task SetRoomCustomProperties(Dictionary<string, object> properties, Dictionary<string, object> expectedValues = null) {
+            if (state != PlayState.GAME) {
+                return Task.FromException(new PlayException(PlayExceptionCode.StateError,
+                    string.Format("You cannot call SetRoomCustomProperties() on {0} state", state.ToString())));
+            }
             var tcs = new TaskCompletionSource<bool>();
-            context.Post(_ => { 
-                if (state != PlayState.GAME) {
-                    tcs.SetException(new PlayException(PlayExceptionCode.StateError,
-                        string.Format("You cannot call SetRoomCustomProperties() on {0} state", state.ToString())));
-                    return;
+            gameConn.SetRoomCustomProperties(properties, expectedValues).ContinueWith(t => {
+                if (t.IsFaulted) {
+                    tcs.SetException(t.Exception.InnerException);
+                } else {
+                    context.Post(__ => {
+                        if (t.Result != null) {
+                            Room.MergeProperties(t.Result);
+                        }
+                        tcs.SetResult(true);
+                    }, null);
                 }
-                gameConn.SetRoomCustomProperties(properties, expectedValues).ContinueWith(t => {
-                    if (t.IsFaulted) {
-                        tcs.SetException(t.Exception.InnerException);
-                    } else {
-                        context.Post(__ => {
-                            if (t.Result != null) {
-                                Room.MergeProperties(t.Result);
-                            }
-                            tcs.SetResult(true);
-                        }, null);
-                    }
-                });
-            }, null);
+            });
             return tcs.Task;
         }
 
         public Task SetPlayerCustomProperties(int actorId, Dictionary<string, object> properties, Dictionary<string, object> expectedValues = null) {
+            if (state != PlayState.GAME) {
+                return Task.FromException(new PlayException(PlayExceptionCode.StateError,
+                    string.Format("You cannot call SetPlayerCustomProperties() on {0} state", state.ToString())));
+            }
             var tcs = new TaskCompletionSource<bool>();
-            context.Post(_ => {
-                if (state != PlayState.GAME) {
-                    tcs.SetException(new PlayException(PlayExceptionCode.StateError,
-                        string.Format("You cannot call SetPlayerCustomProperties() on {0} state", state.ToString())));
-                    return;
+            gameConn.SetPlayerCustomProperties(actorId, properties, expectedValues).ContinueWith(t => {
+                if (t.IsFaulted) {
+                    tcs.SetException(t.Exception.InnerException);
+                } else {
+                    context.Post(__ => {
+                        if (t.Result != null) {
+                            var aId = int.Parse(t.Result["actorId"].ToString());
+                            var player = Room.GetPlayer(aId);
+                            player.MergeProperties(t.Result["changedProps"] as Dictionary<string, object>);
+                        }
+                        tcs.SetResult(true);
+                    }, null);
                 }
-                gameConn.SetPlayerCustomProperties(actorId, properties, expectedValues).ContinueWith(t => { 
-                    if (t.IsFaulted) {
-                        tcs.SetException(t.Exception.InnerException);
-                    } else {
-                        context.Post(__ => { 
-                            if (t.Result != null) {
-                                var aId = int.Parse(t.Result["actorId"].ToString());
-                                var player = Room.GetPlayer(aId);
-                                player.MergeProperties(t.Result["changedProps"] as Dictionary<string, object>);
-                            }
-                            tcs.SetResult(true);
-                        }, null);
-                    }
-                });
-            }, null);
+            });
             return tcs.Task;
         }
 
@@ -641,7 +607,10 @@ namespace LeanCloud.Play {
         }
 
         void OnLobbyConnClose(int code, string reason) {
-            OnDisconnected?.Invoke();
+            context.Post(_ => {
+                state = PlayState.DISCONNECT;
+                OnDisconnected?.Invoke();
+            }, null);
         }
 
         void OnGameConnMessage(Message msg) {
@@ -706,7 +675,10 @@ namespace LeanCloud.Play {
         }   
 
         void OnGameConnClose(int code, string reason) {
-            OnDisconnected?.Invoke();
+            context.Post(_ => {
+                state = PlayState.DISCONNECT;
+                OnDisconnected?.Invoke();
+            }, null);
         }
 
         void HandlePlayerJoinedRoom(Message msg) { 
@@ -848,6 +820,7 @@ namespace LeanCloud.Play {
         }
 
         void HandleRoomKicked(Message msg) {
+            state = PlayState.GAME_TO_LOBBY;
             // 建立连接
             ConnectLobby().ContinueWith(t => {
                 context.Post(_ => {
@@ -909,11 +882,11 @@ namespace LeanCloud.Play {
             lobbyConn.OnClose += OnLobbyConnClose;
         }
 
-        public void _Disconnet() { 
+        public void _Disconnect() { 
             if (state == PlayState.LOBBY) {
-                lobbyConn.Close();
+                lobbyConn.Disconnect();
             } else if (state == PlayState.GAME) {
-                gameConn.Close();
+                gameConn.Disconnect();
             }
         }
     }

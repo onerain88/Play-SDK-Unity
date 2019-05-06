@@ -102,6 +102,10 @@ namespace LeanCloud.Play {
             ws.CloseAsync();
         }
 
+        internal void Disconnect() {
+            ws.CloseAsync();
+        }
+
         // Websocket 事件
         void OnWebSocketMessage(object sender, MessageEventArgs eventArgs) {
             Logger.Debug("<= {0} at {1}", eventArgs.Data, Thread.CurrentThread.ManagedThreadId);

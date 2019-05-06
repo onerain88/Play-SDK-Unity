@@ -29,7 +29,8 @@ namespace LeanCloud.Play.Test
             var c1 = Utils.NewClient("jrt1_1");
             await c0.Connect();
             await c0.CreateRoom();
-
+            // 创建房间有延迟
+            await Task.Delay(5000);
             await c1.Connect();
             var room = await c1.JoinRandomRoom();
             Debug.Log($"join random: {room.Name}");
@@ -88,7 +89,7 @@ namespace LeanCloud.Play.Test
                 return c1.JoinRoom(roomName);
             }).Unwrap().OnSuccess(_ => {
                 Debug.Log($"{c1.UserId} joined room");
-                c1._Disconnet();
+                c1._Disconnect();
             });
 
             while (!flag) {
@@ -100,6 +101,9 @@ namespace LeanCloud.Play.Test
 
         [UnityTest]
         public IEnumerator RejoinRoom() {
+            Logger.LogDelegate += Utils.Log;
+
+            var f = false;
             var roomName = "jrt4_r";
             var c0 = Utils.NewClient("jrt4_0");
             var c1 = Utils.NewClient("jrt4_1");
@@ -109,11 +113,61 @@ namespace LeanCloud.Play.Test
                     PlayerTtl = 600
                 };
                 return c0.CreateRoom(roomName, roomOptions);
+            }).Unwrap().OnSuccess(_ => {
+                return c1.Connect();
+            }).Unwrap().OnSuccess(_ => {
+                return c1.JoinRoom(roomName);
+            }).Unwrap().OnSuccess(_ => {
+                c1.OnDisconnected += () => {
+                    Debug.Log("------------- disconnected");
+                    c1.Connect().OnSuccess(__ => {
+                        return c1.RejoinRoom(roomName);
+                    }).Unwrap().OnSuccess(__ => {
+                        f = true;
+                    });
+                };
+                c1._Disconnect();
             });
 
-            yield return null;
-            // TODO
+            while (!f) {
+                yield return null;
+            }
+            c0.Close();
+            c1.Close();
+        }
 
+        [UnityTest]
+        public IEnumerator ReconnectAndRejoin() {
+            Logger.LogDelegate += Utils.Log;
+
+            var f = false;
+            var roomName = "jrt5_r";
+            var c0 = Utils.NewClient("jrt5_0");
+            var c1 = Utils.NewClient("jrt5_1");
+
+            c0.Connect().OnSuccess(_ => {
+                var roomOptions = new RoomOptions {
+                    PlayerTtl = 600
+                };
+                return c0.CreateRoom(roomName, roomOptions);
+            }).Unwrap().OnSuccess(_ => {
+                return c1.Connect();
+            }).Unwrap().OnSuccess(_ => {
+                return c1.JoinRoom(roomName);
+            }).Unwrap().OnSuccess(_ => {
+                c1.OnDisconnected += () => {
+                    c1.ReconnectAndRejoin().OnSuccess(__ => {
+                        f = true;
+                    });
+                };
+                c1._Disconnect();
+            });
+
+            while (!f) {
+                yield return null;
+            }
+            c0.Close();
+            c1.Close();
         }
 
         [Test]
