@@ -20,6 +20,8 @@ namespace LeanCloud.Play {
         CancellationTokenSource pingTokenSource;
         CancellationTokenSource pongTokenSource;
 
+        string userId;
+
         internal Connection() {
             requests = new Dictionary<int, TaskCompletionSource<Message>>();
             messageQueue = new Queue<Message>();
@@ -28,6 +30,7 @@ namespace LeanCloud.Play {
         }
 
         protected Task Connect(string server, string userId) {
+            this.userId = userId;
             Logger.Debug("connect at {0}", Thread.CurrentThread.ManagedThreadId);
             var tcs = new TaskCompletionSource<bool>();
             ws = new WebSocket(server);
@@ -108,7 +111,7 @@ namespace LeanCloud.Play {
 
         // Websocket 事件
         void OnWebSocketMessage(object sender, MessageEventArgs eventArgs) {
-            Logger.Debug("<= {0} at {1}", eventArgs.Data, Thread.CurrentThread.ManagedThreadId);
+            Logger.Debug("<= {0}", eventArgs.Data);
             Ping();
             Pong();
             if (PING.Equals(eventArgs.Data)) {
@@ -118,6 +121,7 @@ namespace LeanCloud.Play {
             if (isMessageQueueRunning) {
                 HandleMessage(message);
             } else {
+                Logger.Debug("delayed ...");
                 lock (messageQueue) {
                     messageQueue.Enqueue(message);
                 }
@@ -138,7 +142,6 @@ namespace LeanCloud.Play {
                     tcs.SetResult(message);
                 }
             } else {
-                Logger.Debug($"handle message: {message.ToJson()}");
                 // 推送消息
                 OnMessage?.Invoke(message);
             }
@@ -170,13 +173,14 @@ namespace LeanCloud.Play {
             isMessageQueueRunning = true;
         }
 
-        void Ping() {
+       void Ping() {
             lock (pingTokenSource) {
                 if (pingTokenSource != null) {
                     pingTokenSource.Cancel();
                 }
                 pingTokenSource = new CancellationTokenSource();
                 Task.Delay(TimeSpan.FromSeconds(GetPingDuration())).ContinueWith(t => {
+                    Logger.Debug("------------- {0} ping", userId);
                     Send(PING);
                 }, pingTokenSource.Token);
             }
@@ -187,7 +191,7 @@ namespace LeanCloud.Play {
                 if (pongTokenSource != null) {
                     pongTokenSource.Cancel();
                 }
-                Task.Delay(TimeSpan.FromSeconds(GetPingDuration() * 2)).ContinueWith(t => {
+                Task.Delay(TimeSpan.FromSeconds(GetPingDuration() * 3)).ContinueWith(t => {
                     Logger.Debug("It's time for closing ws.");
                     lock (ws) {
                         try {

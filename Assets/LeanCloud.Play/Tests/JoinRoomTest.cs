@@ -13,7 +13,7 @@ namespace LeanCloud.Play.Test
         public async void JoinRoomByName() {
             var roomName = "jrt0_r";
             var c0 = Utils.NewClient("jrt0_0");
-            var c1 = Utils.NewClient("jrt1_0");
+            var c1 = Utils.NewClient("jrt0_1");
             await c0.Connect();
             await c0.CreateRoom(roomName);
             await c1.Connect();
@@ -181,7 +181,6 @@ namespace LeanCloud.Play.Test
             } catch (PlayException e) {
                 Assert.AreEqual(e.Code, 4301);
                 Debug.Log(e.Detail);
-            } finally {
                 c.Close();
             }
         }
@@ -215,7 +214,6 @@ namespace LeanCloud.Play.Test
             } catch (PlayException e) {
                 Assert.AreEqual(e.Code, 4301);
                 Debug.Log(e.Detail);
-            } finally {
                 c0.Close();
                 c1.Close();
             }
