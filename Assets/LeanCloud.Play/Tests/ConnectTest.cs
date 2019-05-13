@@ -119,7 +119,7 @@ namespace LeanCloud.Play.Test
                         var options = new SendEventOptions { 
                             ReceiverGroup = ReceiverGroup.Others
                         };
-                        await c.SendEvent("hi", null, options);
+                        await c.SendEvent(5, null, options);
                         Thread.Sleep(5000);
                     }
                 });

@@ -15,7 +15,7 @@ namespace LeanCloud.Play {
         public event Action<Dictionary<string, object>> OnRoomCustomPropertiesChanged;
         public event Action<Player, Dictionary<string, object>> OnPlayerCustomPropertiesChanged;
         public event Action<Player> OnPlayerActivityChanged;
-        public event Action<string, Dictionary<string, object>, int> OnCustomEvent;
+        public event Action<byte, Dictionary<string, object>, int> OnCustomEvent;
         public event Action<int, string> OnRoomKicked;
         public event Action OnDisconnected;
         public event Action<int, string> OnError;
@@ -249,7 +249,6 @@ namespace LeanCloud.Play {
                 state = PlayState.GAME;
                 throw e;
             }
-            gameConn.Close();
             try {
                 lobbyConn = await ConnectLobby();
                 GameToLobby(lobbyConn);
@@ -295,7 +294,7 @@ namespace LeanCloud.Play {
             Room.RemovePlayer(playerId);
         }
 
-        public async Task SendEvent(string eventId, Dictionary<string, object> eventData = null, SendEventOptions options = null) {
+        public Task SendEvent(byte eventId, Dictionary<string, object> eventData = null, SendEventOptions options = null) {
             if (state != PlayState.GAME) {
                 throw new PlayException(PlayExceptionCode.StateError,
                     string.Format("You cannot call SendEvent() on {0} state", state.ToString()));
@@ -306,7 +305,8 @@ namespace LeanCloud.Play {
                     ReceiverGroup = ReceiverGroup.All
                 };
             }
-            await gameConn.SendEvent(eventId, eventData, opts);
+            gameConn.SendEvent(eventId, eventData, opts);
+            return Task.FromResult(true);
         }
 
         public async Task SetRoomCustomProperties(Dictionary<string, object> properties, Dictionary<string, object> expectedValues = null) {
@@ -354,6 +354,7 @@ namespace LeanCloud.Play {
             } else if (state == PlayState.GAME) {
                 gameConn.Close();
             }
+            state = PlayState.CLOSE;
         }
 
         void OnLobbyConnMessage(Message msg) {
@@ -605,8 +606,8 @@ namespace LeanCloud.Play {
         }
 
         void HandleSendEvent(Message msg) { 
-            if (msg.TryGetValue("eventId", out object eventIdObj)) {
-                var eventId = eventIdObj.ToString();
+            if (msg.TryGetValue("eventId", out object eventIdObj) && 
+                byte.TryParse(eventIdObj.ToString(), out byte eventId)) {
                 var senderId = -1;
                 if (msg.TryGetValue("fromActorId", out object senderIdObj)) {
                     int.TryParse(senderIdObj.ToString(), out senderId);
@@ -684,6 +685,7 @@ namespace LeanCloud.Play {
             lobbyConn.OnClose += OnLobbyConnClose;
         }
 
+        // 调试时模拟断线
         public void _Disconnect() { 
             if (state == PlayState.LOBBY) {
                 lobbyConn.Disconnect();

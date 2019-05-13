@@ -115,7 +115,7 @@ namespace LeanCloud.Play {
             });
         }
 
-        internal Task SendEvent(string eventId, Dictionary<string, object> eventData, SendEventOptions options) {
+        internal Task SendEvent(byte eventId, Dictionary<string, object> eventData, SendEventOptions options) {
             var msg = Message.NewRequest("direct", null);
             msg["eventId"] = eventId;
             msg["msg"] = eventData;

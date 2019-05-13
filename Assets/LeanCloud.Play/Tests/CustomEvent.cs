@@ -22,7 +22,7 @@ namespace LeanCloud.Play.Test
                 return c0.CreateRoom(roomName);
             }).Unwrap().OnSuccess(_ => {
                 c0.OnCustomEvent += (eventId, eventData, senderId) => {
-                    Assert.AreEqual(eventId, "hi");
+                    Assert.AreEqual(eventId, 1);
                     Assert.AreEqual(eventData["name"] as string, "aaa");
                     Assert.AreEqual(int.Parse(eventData["count"].ToString()), 100);
                     f = true;
@@ -38,7 +38,7 @@ namespace LeanCloud.Play.Test
                 var options = new SendEventOptions { 
                     ReceiverGroup = ReceiverGroup.MasterClient
                 };
-                return c1.SendEvent("hi", eventData, options);
+                return c1.SendEvent(1, eventData, options);
             }).Unwrap().OnSuccess(_ => {
                 Debug.Log("send event done");
             });
@@ -63,7 +63,7 @@ namespace LeanCloud.Play.Test
                 return c0.CreateRoom(roomName);
             }).Unwrap().OnSuccess(_ => {
                 c0.OnCustomEvent += (eventId, eventData, senderId) => {
-                    Assert.AreEqual(eventId, "hi");
+                    Assert.AreEqual(eventId, 2);
                     Assert.AreEqual(eventData["name"] as string, "aaa");
                     Assert.AreEqual(int.Parse(eventData["count"].ToString()), 100);
                     f = true;
@@ -79,7 +79,7 @@ namespace LeanCloud.Play.Test
                 var options = new SendEventOptions {
                     targetActorIds = new List<int> { 1, 2 }
                 };
-                return c1.SendEvent("hi", eventData, options);
+                return c1.SendEvent(2, eventData, options);
             }).Unwrap().OnSuccess(_ => {
                 Debug.Log("send event done");
             });
@@ -106,7 +106,7 @@ namespace LeanCloud.Play.Test
                 return c0.CreateRoom(roomName);
             }).Unwrap().OnSuccess(_ => {
                 c0.OnCustomEvent += (eventId, eventData, senderId) => {
-                    Assert.AreEqual(eventId, "hi");
+                    Assert.AreEqual(eventId, 3);
                     f0 = true;
                 };
                 return c1.Connect();
@@ -114,10 +114,10 @@ namespace LeanCloud.Play.Test
                 return c1.JoinRoom(roomName);
             }).Unwrap().OnSuccess(_ => {
                 c1.OnCustomEvent += (eventId, eventData, senderId) => {
-                    Assert.AreEqual(eventId, "hi");
+                    Assert.AreEqual(eventId, 3);
                     f1 = true;
                 };
-                return c1.SendEvent("hi");
+                return c1.SendEvent(3);
             }).Unwrap().OnSuccess(_ => {
                 Debug.Log("send event done");
             });

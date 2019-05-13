@@ -30,22 +30,21 @@ namespace LeanCloud.Play.Test
                 };
                 c0.OnCustomEvent += (eventId, eventData, sender) => {
                     Debug.Log("---- received event: " + eventId);
-                    Assert.AreEqual(eventId, "hi");
+                    Assert.AreEqual(eventId, 4);
                     f1 = true;
                 };
                 c0.PauseMessageQueue();
                 return c1.Connect();
             }).Unwrap().OnSuccess(_ => {
                 return c1.JoinRoom(roomName);
-            }).Unwrap().OnSuccess(_ => {
-                return Task.Delay(3000);
-            }).Unwrap().OnSuccess(_ => {
+            }).Unwrap().OnSuccess(_ => Task.Delay(3000))
+            .Unwrap().OnSuccess(_ => {
                 c0.ResumeMessageQueue();
                 Debug.Log("resume message queue");
                 c0.PauseMessageQueue();
-                c1.SendEvent("hi");
-                return Task.Delay(10000);
-            }).Unwrap().OnSuccess(_ => {
+                return c1.SendEvent(4);
+            }).Unwrap().OnSuccess(_ => Task.Delay(5000))
+            .Unwrap().OnSuccess(_ => {
                 Debug.Log("delay done");
                 c0.ResumeMessageQueue();
             });
