@@ -123,7 +123,7 @@ namespace LeanCloud.Play {
                 LobbyToGame(gameConn, room);
                 return room;
             } catch (Exception e) {
-                state = PlayState.INIT;
+                state = PlayState.LOBBY;
                 throw e;
             }
         }
@@ -143,7 +143,7 @@ namespace LeanCloud.Play {
                 LobbyToGame(gameConn, Room);
                 return Room;
             } catch (Exception e) {
-                state = PlayState.INIT;
+                state = PlayState.LOBBY;
                 throw e;
             }
         }
@@ -163,7 +163,7 @@ namespace LeanCloud.Play {
                 LobbyToGame(gameConn, Room);
                 return Room;
             } catch (Exception e) {
-                state = PlayState.INIT;
+                state = PlayState.LOBBY;
                 throw e;
             }
         }
@@ -188,7 +188,7 @@ namespace LeanCloud.Play {
                 LobbyToGame(gameConn, Room);
                 return Room;
             } catch (Exception e) {
-                state = PlayState.INIT;
+                state = PlayState.LOBBY;
                 throw e;
             }
         }
@@ -208,7 +208,7 @@ namespace LeanCloud.Play {
                 LobbyToGame(gameConn, Room);
                 return Room;
             } catch (Exception e) {
-                state = PlayState.INIT;
+                state = PlayState.LOBBY;
                 throw e;
             }
         }
