@@ -22,25 +22,29 @@ namespace LeanCloud.Play.Test
         public IEnumerator ConnectWithSameId() {
             Logger.LogDelegate += Utils.Log;
 
-            var flag = false;
+            var f0 = false;
+            var f1 = false;
             var c0 = Utils.NewClient("ct1");
             var c1 = Utils.NewClient("ct1");
             c0.OnError += (code, detail) => {
                 Debug.Log($"on error at {Thread.CurrentThread.ManagedThreadId}");
                 Assert.AreEqual(code, 4102);
                 Debug.Log(detail);
-                flag = true;
+            };
+            c0.OnDisconnected += () => {
+                Debug.Log("c0 is disconnected.");
+                f0 = true;
             };
             c0.Connect().OnSuccess(_ => {
                 return c1.Connect();
             }).Unwrap().OnSuccess(_ => {
                 Debug.Log($"{c1.UserId} connected at {Thread.CurrentThread.ManagedThreadId}");
+                f1 = true;
             });
 
-            while (!flag) {
+            while (!f0 || !f1) {
                 yield return null;
             }
-            c0.Close();
             c1.Close();
         }
 
@@ -74,7 +78,6 @@ namespace LeanCloud.Play.Test
             } catch (PlayException e) {
                 Assert.AreEqual(e.Code, 4104);
                 Debug.Log(e.Message);
-                c.Close();
             }
         }
 
@@ -110,13 +113,13 @@ namespace LeanCloud.Play.Test
             c.Connect().OnSuccess(_ => {
                 return c.CreateRoom();
             }).Unwrap().OnSuccess(_ => {
-                Task.Run(() => {
+                Task.Run(async () => {
                     var count = 6;
                     while (count > 0 && !f) {
                         var options = new SendEventOptions { 
                             ReceiverGroup = ReceiverGroup.Others
                         };
-                        c.SendEvent("hi", null, options);
+                        await c.SendEvent("hi", null, options);
                         Thread.Sleep(5000);
                     }
                 });
@@ -140,10 +143,11 @@ namespace LeanCloud.Play.Test
             var c = Utils.NewClient("ct7");
 
             c.Connect().OnSuccess(_ => {
-                c.Close();
                 f = true;
             });
-            c.Connect();
+            c.Connect().ContinueWith(t => { 
+                
+            });
 
             while (!f) {
                 yield return null;

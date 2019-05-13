@@ -68,31 +68,31 @@ namespace LeanCloud.Play.Test
 
         [UnityTest]
         public IEnumerator LeaveRoom() {
-            var flag = false;
+            Logger.LogDelegate += Utils.Log;
 
+            var f0 = false;
+            var f1 = false;
             var roomName = "jrt3_r";
             var c0 = Utils.NewClient("jrt3_0");
             var c1 = Utils.NewClient("jrt3_1");
 
             c0.Connect().OnSuccess(_ => {
-                var roomOptions = new RoomOptions {
-                    PlayerTtl = 600
-                };
-                return c0.CreateRoom(roomName, roomOptions);
+                return c0.CreateRoom(roomName);
             }).Unwrap().OnSuccess(_ => {
-                c0.OnPlayerActivityChanged += player => {
-                    Assert.AreEqual(player.IsActive, false);
-                    flag = true;
+                c0.OnPlayerRoomLeft += leftPlayer => {
+                    f0 = true;
                 };
                 return c1.Connect();
             }).Unwrap().OnSuccess(_ => {
                 return c1.JoinRoom(roomName);
             }).Unwrap().OnSuccess(_ => {
                 Debug.Log($"{c1.UserId} joined room");
-                c1._Disconnect();
+                return c1.LeaveRoom();
+            }).Unwrap().OnSuccess(_ => {
+                f1 = true;
             });
 
-            while (!flag) {
+            while (!f0 || !f1) {
                 yield return null;
             }
             c0.Close();
@@ -216,6 +216,7 @@ namespace LeanCloud.Play.Test
                 Debug.Log(e.Detail);
                 c0.Close();
                 c1.Close();
+                c2.Close();
             }
         }
 

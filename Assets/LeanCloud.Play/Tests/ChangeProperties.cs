@@ -157,11 +157,8 @@ namespace LeanCloud.Play.Test
             var expectedValues = new Dictionary<string, object> {
                 { "id", 2 }
             };
-            try {
-                await c.Player.SetCustomProperties(newProps, expectedValues);
-            } catch (Exception e) {
-                c.Close();
-            }
+            await c.Player.SetCustomProperties(newProps, expectedValues);
+            c.Close();
         }
 
         [Test]

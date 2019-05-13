@@ -48,7 +48,10 @@ namespace LeanCloud.Play.Test
 
         [UnityTest]
         public IEnumerator MasterLeave() {
-            var f = false;
+            Logger.LogDelegate += Utils.Log;
+
+            var f0 = false;
+            var f1 = false;
             var roomName = "mt1_r";
             var c0 = Utils.NewClient("mt1_0");
             var c1 = Utils.NewClient("mt1_1");
@@ -63,14 +66,15 @@ namespace LeanCloud.Play.Test
                 Assert.AreEqual(c1.Room.MasterActorId, c0.Player.ActorId);
                 c1.OnMasterSwitched += newMaster => {
                     Assert.AreEqual(newMaster.ActorId, c1.Player.ActorId);
-                    f = true;
+                    f1 = true;
                 };
                 return c0.LeaveRoom();
             }).Unwrap().OnSuccess(_ => {
                 Debug.Log("leave room done");
+                f0 = true;
             });
 
-            while (!f) {
+            while (!f0 || !f1) {
                 yield return null;
             }
             c0.Close();
@@ -99,7 +103,6 @@ namespace LeanCloud.Play.Test
             }).Unwrap().OnSuccess(_ => {
                 c1.OnPlayerRoomLeft += leftPlayer => {
                     Assert.AreEqual(leftPlayer.ActorId, c0.Player.ActorId);
-                    f0 = true;
                 };
                 c1.OnMasterSwitched += newMaster => {
                     Assert.AreEqual(c1.Room.MasterActorId, -1);
@@ -109,6 +112,7 @@ namespace LeanCloud.Play.Test
                 return c0.LeaveRoom();
             }).Unwrap().OnSuccess(_ => {
                 Debug.Log("leave room done");
+                f0 = true;
             });
 
             while (!f0 || !f1) {
