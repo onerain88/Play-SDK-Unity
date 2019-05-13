@@ -110,5 +110,20 @@ namespace LeanCloud.Play.Test
             }
             c.Close();
         }
+
+        [Test]
+        public async void CreateRoomFailed() {
+            Logger.LogDelegate += Utils.Log;
+
+            var roomName = "crt5_ r";
+            var c = Utils.NewClient("crt5");
+            await c.Connect();
+            try {
+                var room = await c.CreateRoom(roomName);
+            } catch (PlayException e) {
+                Assert.AreEqual(e.Code, 4316);
+                c.Close();
+            }
+        }
     }
 }

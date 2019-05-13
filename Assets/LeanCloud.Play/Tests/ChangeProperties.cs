@@ -12,6 +12,8 @@ namespace LeanCloud.Play.Test
     {
         [UnityTest]
         public IEnumerator ChangeRoomProperties() {
+            Logger.LogDelegate += Utils.Log;
+
             var roomName = "cp0_r";
             var f0 = false;
             var f1 = false;
@@ -81,6 +83,8 @@ namespace LeanCloud.Play.Test
 
         [UnityTest]
         public IEnumerator ChangePlayerProperties() {
+            Logger.LogDelegate += Utils.Log;
+
             var f0 = false;
             var f1 = false;
             var roomName = "cp2_r";
@@ -153,9 +157,11 @@ namespace LeanCloud.Play.Test
             var expectedValues = new Dictionary<string, object> {
                 { "id", 2 }
             };
-            await c.Player.SetCustomProperties(newProps, expectedValues);
-
-            c.Close();
+            try {
+                await c.Player.SetCustomProperties(newProps, expectedValues);
+            } catch (Exception e) {
+                c.Close();
+            }
         }
 
         [Test]
