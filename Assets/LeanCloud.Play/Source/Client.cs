@@ -324,9 +324,12 @@ namespace LeanCloud.Play {
                     string.Format("You cannot call SetPlayerCustomProperties() on {0} state", state.ToString()));
             }
             var res = await gameConn.SetPlayerCustomProperties(actorId, properties, expectedValues);
-            var aId = int.Parse(res["actorId"].ToString());
-            var player = Room.GetPlayer(aId);
-            player.MergeProperties(res["changedProps"] as Dictionary<string, object>);
+            if (res != null) {
+                // 如果不为空，则进行属性更新
+                var aId = int.Parse(res["actorId"].ToString());
+                var player = Room.GetPlayer(aId);
+                player.MergeProperties(res["changedProps"] as Dictionary<string, object>);
+            }
         }
 
         public void PauseMessageQueue() { 
