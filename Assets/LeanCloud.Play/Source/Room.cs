@@ -129,10 +129,6 @@ namespace LeanCloud.Play {
             return Client.SetRoomVisible(visible);
         }
 
-        internal static Room NewFromDictionary(Play play, Dictionary<string, object> roomDict) {
-            return null;
-        }
-
         internal static Room NewFromDictionary(Client client, Dictionary<string, object> roomDict) {
             Room room = NewFromDictionary(roomDict);
             room.Client = client;

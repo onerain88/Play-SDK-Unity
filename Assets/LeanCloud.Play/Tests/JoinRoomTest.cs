@@ -201,6 +201,8 @@ namespace LeanCloud.Play.Test
             };
             await c0.CreateRoom(roomName, roomOptions);
 
+            // 创建房间有延迟
+            await Task.Delay(5000);
             await c1.Connect();
             await c1.JoinRandomRoom(new Dictionary<string, object> {
                 { "lv", 2 }

@@ -68,7 +68,7 @@ namespace LeanCloud.Play {
 
             state = PlayState.INIT;
             Logger.Debug("start at {0}", Thread.CurrentThread.ManagedThreadId);
-            context = SynchronizationContext.Current ?? new PlaySynchronizationContext();
+            context = SynchronizationContext.Current ?? new SynchronizationContext();
 
             playRouter = new PlayRouter(appId, playServer);
             lobbyRouter = new LobbyRouter(appId, false, null);

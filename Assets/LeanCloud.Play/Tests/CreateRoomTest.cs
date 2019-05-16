@@ -36,9 +36,9 @@ namespace LeanCloud.Play.Test
             await c.Connect();
             var roomOptions = new RoomOptions {
                 Visible = false,
-                EmptyRoomTtl = 10000,
+                EmptyRoomTtl = 60,
                 MaxPlayerCount = 2,
-                PlayerTtl = 600,
+                PlayerTtl = 60,
                 CustomRoomProperties = new Dictionary<string, object> {
                     { "title", roomTitle },
                     { "level", 2 },

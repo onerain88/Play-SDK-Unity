@@ -73,16 +73,10 @@ namespace LeanCloud.Play {
             return Client.SetPlayerCustomProperties(ActorId, properties, expectedValues);
         }
 
-        internal Player(Play play) { }
-
         internal Player() {
             ActorId = -1;
             UserId = null;
 		}
-
-        internal static Player NewFromDictionary(Play play, Dictionary<string, object> playerDict) {
-            return null;
-        }
 
         internal static Player NewFromDictionary(Dictionary<string, object> playerDict) {
             if (playerDict == null) {
