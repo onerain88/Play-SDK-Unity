@@ -13,7 +13,7 @@ namespace LeanCloud.Play {
             get; set;
         }
 
-        Dictionary<int, Player> players = null;
+        Dictionary<int, Player> playerDict;
 
         /// <summary>
         /// 房间名称
@@ -72,18 +72,12 @@ namespace LeanCloud.Play {
             get; private set;
 		}
 
-        Dictionary<string, object> customProperties;
-
         /// <summary>
         /// 获取自定义属性
         /// </summary>
         /// <value>The custom properties.</value>
         public Dictionary<string, object> CustomProperties {
-            get {
-                return customProperties;
-            } internal set {
-                customProperties = value;
-            }
+            get; internal set;
         }
 
         /// <summary>
@@ -92,8 +86,8 @@ namespace LeanCloud.Play {
         /// <value>The player list.</value>
         public List<Player> PlayerList {
             get {
-                lock (players) {
-                    return players.Values.ToList();
+                lock (playerDict) {
+                    return playerDict.Values.ToList();
                 }
             }
         }
@@ -113,8 +107,8 @@ namespace LeanCloud.Play {
         /// <returns>玩家对象</returns>
         /// <param name="actorId">玩家在房间中的 Id</param>
         public Player GetPlayer(int actorId) {
-            lock (players) {
-                if (!players.TryGetValue(actorId, out Player player)) {
+            lock (playerDict) {
+                if (!playerDict.TryGetValue(actorId, out Player player)) {
                     throw new Exception(string.Format("no player: {0}", actorId));
                 }
                 return player;
@@ -151,11 +145,11 @@ namespace LeanCloud.Play {
                 var expecteds = expectedsObj as List<object>;
                 room.ExpectedUserIds = expecteds.Cast<string>().ToList();
             }
-            room.players = new Dictionary<int, Player>();
+            room.playerDict = new Dictionary<int, Player>();
             List<object> players = roomDict["members"] as List<object>;
             foreach (Dictionary<string, object> playerDict in players) {
                 Player player = Player.NewFromDictionary(playerDict);
-                room.players.Add(player.ActorId, player);
+                room.playerDict.Add(player.ActorId, player);
             }
             if (roomDict.TryGetValue("attr", out object propsObj)) {
                 var props = propsObj as Dictionary<string, object>;
@@ -170,14 +164,14 @@ namespace LeanCloud.Play {
 			if (player == null) {
 				throw new Exception(string.Format("player is null"));
 			}
-            lock (players) {
-                players.Add(player.ActorId, player);
+            lock (playerDict) {
+                playerDict.Add(player.ActorId, player);
             }
 		}
 
         internal void RemovePlayer(int actorId) {
-            lock (players) {
-                if (!players.Remove(actorId)) {
+            lock (playerDict) {
+                if (!playerDict.Remove(actorId)) {
                     throw new Exception(string.Format("no player: {0}", actorId));
                 }
             }
@@ -187,9 +181,9 @@ namespace LeanCloud.Play {
             if (changedProps == null)
                 return;
 
-            lock (customProperties) {
+            lock (CustomProperties) {
                 foreach (KeyValuePair<string, object> entry in changedProps) {
-                    customProperties[entry.Key] = entry.Value;
+                    CustomProperties[entry.Key] = entry.Value;
                 }
             }
         }

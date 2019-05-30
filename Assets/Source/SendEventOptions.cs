@@ -38,7 +38,7 @@ namespace LeanCloud.Play
         /// 接收者 Id。如果设置，将会覆盖 ReceiverGroup
         /// </summary>
         /// <value>The target actor identifiers.</value>
-        public List<int> targetActorIds {
+        public List<int> TargetActorIds {
             get; set;
         }
     }

@@ -77,7 +77,7 @@ namespace LeanCloud.Play.Test
                     { "count", 100 },
                 };
                 var options = new SendEventOptions {
-                    targetActorIds = new List<int> { 1, 2 }
+                    TargetActorIds = new List<int> { 1, 2 }
                 };
                 return c1.SendEvent(2, eventData, options);
             }).Unwrap().OnSuccess(_ => {

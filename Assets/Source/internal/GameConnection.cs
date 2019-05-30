@@ -107,8 +107,8 @@ namespace LeanCloud.Play {
             msg["eventId"] = eventId;
             msg["msg"] = eventData;
             msg["receiverGroup"] = (int) options.ReceiverGroup;
-            if (options.targetActorIds != null) {
-                msg["toActorIds"] = options.targetActorIds.Cast<object>().ToList();
+            if (options.TargetActorIds != null) {
+                msg["toActorIds"] = options.TargetActorIds.Cast<object>().ToList();
             }
             await Send(msg);
         }
